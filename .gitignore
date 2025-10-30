@@ -1,3 +1,9 @@
+# My stuff
+dataset/
+ResNet/data/
+ausgabe.png
+MulticlassCNN.pth
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
