@@ -2,7 +2,7 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class ExpansinonResBlock(nn.Module):
+class ExpansionResBlock(nn.Module):
     def __init__(self, in_channels, inter_channels, downsampling_layer=None, stride=1):
         super().__init__()
         expansion = 4
