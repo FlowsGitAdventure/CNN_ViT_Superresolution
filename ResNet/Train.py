@@ -15,11 +15,11 @@ import numpy as np
 
 # Hyperparameters
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 64
+batch_size = 128
 img_channels = 3
 num_classes = 10
 start_lr = 0.1
-num_epochs = 50
+num_epochs = 10
 model_save_path = 'resnet101_cifar10.pth'
 
 # Load the dataset
