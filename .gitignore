@@ -3,6 +3,8 @@ dataset/
 ResNet/data/
 ausgabe.png
 MulticlassCNN.pth
+*.nii
+*.gz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
