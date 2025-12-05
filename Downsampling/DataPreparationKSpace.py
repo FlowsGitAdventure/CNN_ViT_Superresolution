@@ -56,7 +56,6 @@ def downsample_with_rician_noise(img_obj, scale_factor, noise_factor):
 
     print(f"  Processing {t} timeframes (Target shape: {new_x, new_y, new_z}) iteratively to save RAM...")
 
-    # 4. Iterate over Time (The RAM fix)
     for i in range(t):
         # Extract single 3D volume
         vol_3d = data[..., i]

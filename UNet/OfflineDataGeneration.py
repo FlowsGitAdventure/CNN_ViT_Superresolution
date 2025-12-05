@@ -17,6 +17,8 @@ This approach saves RAM and every image is used completely instead of only choos
 import nibabel as nib
 import os
 import numpy as np
+import uuid
+import math
 
 
 PATCH_SIZE_LR = 16
@@ -42,7 +44,9 @@ class PrepareData:
 
         lr_dir_list = os.listdir(LR_INPUT_PATH)
         lr_dir_list = [f for f in lr_dir_list if '.nii' in f]
-        return hr_dir_list[0], lr_dir_list[0]   #ToDo: Switch to every file, thats just for testing
+        hr_dir_list.sort()
+        lr_dir_list.sort()
+        return hr_dir_list[1], lr_dir_list[1]   #ToDo: Switch to every file, thats just for testing
 
     def main(self):
         hr_img_filename, lr_img_filename = self.get_file_names()
@@ -59,12 +63,11 @@ class PrepareData:
         hr_data = np.clip(hr_data / max, 0, 1)
         lr_data = np.clip(lr_data / max, 0, 1)
 
-        print(lr_data.shape)
-
-        d, h, w, t = lr_data.shape
+        d, h, w, time = lr_data.shape
+        a,b,c,q = hr_data.shape
         patch_count = 0
 
-        for t in range(t):
+        for t in range(time):
             lr_vol = lr_data[..., t]
             hr_vol = hr_data[..., t]
             for z in range(0, d - PATCH_SIZE_LR + 1, STRIDE):
@@ -77,15 +80,27 @@ class PrepareData:
                             continue
 
                         z_hr, y_hr, x_hr = z*SCALE_FACTOR, y*SCALE_FACTOR, x*SCALE_FACTOR
-                        hr_patch = hr_vol[z_hr:z_hr+PATCH_SIZE_HR, y_hr:y_hr*PATCH_SIZE_HR, x_hr:x_hr*PATCH_SIZE_HR]
+                        z_hr = math.ceil((z * SCALE_FACTOR) / SCALE_FACTOR) * SCALE_FACTOR
+                        y_hr = math.ceil((y * SCALE_FACTOR) / SCALE_FACTOR) * SCALE_FACTOR
+                        x_hr = math.ceil((x * SCALE_FACTOR) / SCALE_FACTOR) * SCALE_FACTOR
 
-                        save_name = f"{lr_img_filename.split('_')[0:1]}_{patch_count:04d}"
+                        z_hr_max = z_hr+PATCH_SIZE_HR
+                        y_hr_max = y_hr+PATCH_SIZE_HR
+                        x_hr_max = x_hr+PATCH_SIZE_HR
+                        hr_patch = hr_vol[z_hr:z_hr_max, y_hr:y_hr_max, x_hr:x_hr_max]
+
+                        if hr_patch.size == 0:
+                            print(f"Warn! empty array")
+
+                        name_id = str(uuid.uuid4())
+                        save_name = f"{name_id}_{patch_count:04d}"
                         np.save(os.path.join(HR_NUMPY_OUTDIR, f"{save_name}_HR.npy"), hr_patch)
                         np.save(os.path.join(LR_NUMPY_OUTDIR, f"{save_name}_LR.npy"), lr_patch)
+#
 
                         patch_count += 1
 
-        print(f"File {lr_img_filename.split('_')[0:1]}: Extracted {patch_count} patches.")
+        print(f"File {lr_img_filename}: Extracted {patch_count} patches.")
 
 
 if __name__ == "__main__":

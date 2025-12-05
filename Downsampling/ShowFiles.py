@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 #img = nib.load("C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\studyforrest-data-multires7t\\sub-04\\ses-r08\\func\\sub-04_ses-r08_task-coverage_rec-dico_bold.nii.gz")
-img = nib.load("C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\Downsampling\\High_Res_08_Rician\\sub-04_ses-r08_task-coverage_bold_HR.nii.gz")
+# img = nib.load("C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\Downsampling\\High_Res_08_Rician\\sub-04_ses-r08_task-coverage_bold_HR.nii.gz")
 # img = nib.load("./output_hr.nii.gz")
-data = img.get_fdata()
-plt.imshow(data[:, :, 15, 0], cmap='gray')
-plt.show()
+# data = img.get_fdata()
+# plt.imshow(data[:, :, 15, 0], cmap='gray')
+# plt.show()
 
 import nibabel as nib
 import matplotlib.pyplot as plt
@@ -76,10 +76,9 @@ def visualize_slice(file_path, timepoint=0, slice_idx=None, axis=2):
         print(f"Error: Slice index {slice_idx} or Timepoint {timepoint} is out of bounds for shape {shape}")
 
 
-# if __name__ == "__main__":
-#     # --- CHANGE PATH HERE ---
-#     #file_path = "./data/LR/sub-01_task-rest.nii.gz"
-#     file_path = "./output_hr.nii" # Use this to check your result
-#
-#     # Visualize Middle Axial Slice at Timepoint 0
-#     visualize_slice(file_path, timepoint=0, axis=2, slice_idx=15)
+if __name__ == "__main__":
+    # --- CHANGE PATH HERE ---
+    #file_path = "./data/LR/sub-01_task-rest.nii.gz"
+    file_path = "./output_hr.nii"   # Use this to check your result
+    # Visualize Middle Axial Slice at Timepoint 0
+    visualize_slice(file_path, timepoint=0, axis=2, slice_idx=15)
