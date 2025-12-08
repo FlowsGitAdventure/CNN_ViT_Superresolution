@@ -5,21 +5,23 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
 from UNetSuperRes import UNet
-from CreateDataset import RandomDataSelector, NumpyPatchDataset
+
+from GetRandomData import GetRandomData
+from CreateDataset import CreateDataset
 from CombinedSSIML1Loss import CombinedSSIML1Loss as ssim_l1
 
 from PeakSignalNoiseRatio import calculate_psnr
 from StructuralSimilarity import calculate_ssim_score
 
 
-LR_DIR = '.data/Low_Res_08'
-HR_DIR = '.data/High_Res_08'
-lr_dir = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\UNet\\data\\Low_Res_Numpy_08"
-hr_dir = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\UNet\\data\\High_Res_Numpy_08"
+LR_DIR = '../Downsampling/Low_Res_08_Rician_test'
+HR_DIR = '../Downsampling/High_Res_08_Rician_test'
+# lr_dir = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\UNet\\data\\Low_Res_Numpy_08"
+# hr_dir = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\UNet\\data\\High_Res_Numpy_08"
 
 # Hyperparameters
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BASE_FILTERS = 16   # Standard: 32
+BASE_FILTERS = 16   # Former: 32
 BATCH_SIZE = 128
 START_LR = 0.1
 NUM_EPOCHS = 10
@@ -94,11 +96,10 @@ def validation(model, device, loss_fn, loader):
 
 if __name__ == "__main__":
     # Load dataset
-    # ToDo: Look into Dataset and prepare data
-    data_selector = RandomDataSelector()
+    data_selector = GetRandomData(LR_DIR, HR_DIR, 16, 4, is_random=True)
     train_files, validation_files, hr_train_files, hr_validation_files = data_selector.get_data()
-    train_dataset = NumpyPatchDataset(train_files, hr_train_files, lr_dir, hr_dir, expected_shape=(16, 16, 16))
-    validation_dataset = NumpyPatchDataset(validation_files, hr_validation_files, lr_dir, hr_dir, expected_shape=(16, 16, 16))
+    train_dataset = CreateDataset(train_files, hr_train_files, LR_DIR, HR_DIR)
+    validation_dataset = CreateDataset(validation_files, hr_validation_files, LR_DIR, HR_DIR)
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=6, pin_memory=True)
     val_loader = DataLoader(validation_dataset, batch_size=10, shuffle=False, num_workers=4, pin_memory=True)
@@ -120,7 +121,7 @@ if __name__ == "__main__":
 
     # Trainings loop
     for epoch in range(NUM_EPOCHS):
-        train_loss, train_loss_log = train(model=model, device=DEVICE, loss_fn=criterion, optimizer=optimizer, loader=train_loader, num_epochs=NUM_EPOCHS)
+        train_loss, train_loss_log = train(model=model, device=DEVICE, loss_fn=criterion, optimizer=optimizer, loader=train_loader, num_epochs=NUM_EPOCHS, epoch=epoch)
         val_loss, avg_psnr_metric, avg_ssim_metric, val_loss_log = validation(model, DEVICE, criterion, val_loader)
 
         total_train_loss.append(train_loss)
