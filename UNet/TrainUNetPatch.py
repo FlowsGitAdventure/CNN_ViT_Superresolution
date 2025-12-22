@@ -166,8 +166,6 @@ if __name__ == "__main__":
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss Over Epochs')
     plt.legend()
-    plt.savefig('training_validation_plots.png')
-    print("Training and validation plots saved as 'training_validation_plots.png'")
 
     plt.subplot(1, 2, 2)
     plt.plot(range(1, NUM_EPOCHS + 1), total_ssim_metric, label='Structural Similarity Metric')
@@ -177,4 +175,6 @@ if __name__ == "__main__":
     plt.title('Metrics: PSNR and SSIM')
     plt.legend()
 
+    plt.savefig('training_validation_plots.png')
+    print("Training and validation plots saved as 'training_validation_plots.png'")
     plt.show()
