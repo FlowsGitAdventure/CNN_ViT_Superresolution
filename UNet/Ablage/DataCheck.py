@@ -54,8 +54,8 @@ import os
 import nibabel as nib
 
 # --- CONFIGURATION ---
-LR_DIR = "../Downsampling/Low_Res_08_Rician_test"
-HR_DIR = "../Downsampling/High_Res_08_Rician_test"
+LR_DIR = "../../Downsampling/Low_Res_08_Rician_test"
+HR_DIR = "../../Downsampling/High_Res_08_Rician_test"
 
 # The majority shapes you want to KEEP
 TARGET_SHAPE_LR = (104, 80, 16)

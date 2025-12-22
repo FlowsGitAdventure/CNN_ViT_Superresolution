@@ -34,8 +34,8 @@ class UNet(nn.Module):
             nn.ReLU(inplace=True),
 
             # Second 2x upscale
-            nn.ConvTranspose3d(f, f, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(inplace=True),
+            # nn.ConvTranspose3d(f, f, kernel_size=4, stride=2, padding=1),
+            # nn.ReLU(inplace=True),
 
             # Final convolution to output
             nn.Conv3d(f, out_channels, kernel_size=3, padding=1)
@@ -43,7 +43,10 @@ class UNet(nn.Module):
 
     def forward(self, x):
         # Residual Connection (Interpolated Input)
-        x_residual_upsampled = F.interpolate(x, scale_factor=4, mode='trilinear', align_corners=False)
+        # x_residual_upsampled = F.interpolate(x, scale_factor=2, mode='trilinear', align_corners=False)
+        target_d, target_h, target_w = x.shape[2] * 2, x.shape[3] * 2, x.shape[4] * 2
+        x_residual_upsampled = F.interpolate(x, size=(target_d, target_h, target_w),
+                                             mode='trilinear', align_corners=False)
 
         # Encoder
         down_1, p1 = self.down_conv1(x)
@@ -65,7 +68,7 @@ class UNet(nn.Module):
 
         # Shape Check for Padding safety
         if features_hr.shape != x_residual_upsampled.shape:
-            x_residual_upsampled = F.interpolate(x, size=features_hr.shape[2:], mode='trilinear', align_corners=False)
+            x_residual_upsampled = F.interpolate(features_hr, size=features_hr.shape[2:], mode='trilinear', align_corners=False)
 
         out = features_hr + x_residual_upsampled
         return out

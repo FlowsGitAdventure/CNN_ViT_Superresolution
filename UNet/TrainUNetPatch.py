@@ -14,15 +14,14 @@ from PeakSignalNoiseRatio import calculate_psnr
 from StructuralSimilarity import calculate_ssim_score
 
 
-LR_DIR = '../Downsampling/Low_Res_08_Rician_test'
-HR_DIR = '../Downsampling/High_Res_08_Rician_test'
-# lr_dir = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\UNet\\data\\Low_Res_Numpy_08"
-# hr_dir = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\UNet\\data\\High_Res_Numpy_08"
+LR_DIR = '../Downsampling/Low_Res_08_Rician'
+HR_DIR = '../Downsampling/High_Res_08_Rician'
+
 
 # Hyperparameters
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BASE_FILTERS = 16   # Former: 32
-BATCH_SIZE = 128
+BATCH_SIZE = 1
 START_LR = 0.1
 NUM_EPOCHS = 10
 SAVE_DIR = './checkpoints1'
@@ -35,19 +34,27 @@ def update_lr(optimizer, lr):
 
 
 def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs):
+    print(f"train start epoch {epoch}")
     model.train()
+    print("1")
     loss_log = []
+    print("2")
 
     progress_bar = tqdm(enumerate(loader), total=len(loader), desc=f"Epoch {epoch}/{num_epochs}")
-
+    print("3")
     for batch_idx, (lr, hr) in enumerate(loader):
+        print(f"Train on {batch_idx}")
         lr, hr = lr.to(device), hr.to(device)
+        print("Data loaded to device")
 
         # Forward step
+        print("Forward step")
         out = model(lr)
-        loss = loss_fn.forward(out, hr)
+        loss, _ = loss_fn(out, hr)
+        # loss = loss_fn.forward(out, hr)
 
         # Backward step
+        print("Baackward step")
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -58,7 +65,7 @@ def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs):
         progress_bar.set_postfix(loss=loss)
 
     avg_loss = sum(loss_log) / len(loss_log)
-    print(f'Epoch {epoch} || Training Loss: {avg_loss:.4f}')
+    print(f'Epoch {epoch} | Training Loss: {avg_loss:.4f}')
     return avg_loss, loss_log
 
 
@@ -76,13 +83,13 @@ def validation(model, device, loss_fn, loader):
             # Forward Step
             out = model(lr)
 
-            loss = loss_fn(out, hr)
+            loss, _ = loss_fn(out, hr)
             loss_log.append(loss.item())
 
             batch_psnr = calculate_psnr(out, hr, data_range=1.0)
             batch_ssim = calculate_ssim_score(out, hr, data_range=1.0)
 
-            batch_size = input().size(0)
+            batch_size = lr.size(0)
             total_psnr += batch_psnr.item() * batch_size
             total_ssim += batch_ssim.item() * batch_size
             total_samples += batch_size
@@ -98,16 +105,24 @@ if __name__ == "__main__":
     # Load dataset
     data_selector = GetRandomData(LR_DIR, HR_DIR, 16, 4, is_random=True)
     train_files, validation_files, hr_train_files, hr_validation_files = data_selector.get_data()
+    print("random data selected")
     train_dataset = CreateDataset(train_files, hr_train_files, LR_DIR, HR_DIR)
+    print("Train Dataset created")
     validation_dataset = CreateDataset(validation_files, hr_validation_files, LR_DIR, HR_DIR)
+    print("Validation Dataset created")
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=6, pin_memory=True)
-    val_loader = DataLoader(validation_dataset, batch_size=10, shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(validation_dataset, batch_size=10, shuffle=False, num_workers=0, pin_memory=True)
+    print("Dataloader created")
 
     print(f"Training on: {DEVICE}")
 
     # prepare training
-    model = UNet(in_channels=1, out_channels=1, base_filters=BASE_FILTERS).to(DEVICE)
+    sample_lr, _ = train_dataset[0]
+    channels_in = sample_lr.shape[0]
+    print(f"Train with {sample_lr.shape}")
+    model = UNet(in_channels=channels_in, out_channels=channels_in, base_filters=BASE_FILTERS).to(DEVICE)
+    print("model loaded")
     learning_rate = START_LR
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     # criterion = nn.L1Loss()
@@ -120,6 +135,7 @@ if __name__ == "__main__":
     total_ssim_metric = []
 
     # Trainings loop
+    print("Train loop start")
     for epoch in range(NUM_EPOCHS):
         train_loss, train_loss_log = train(model=model, device=DEVICE, loss_fn=criterion, optimizer=optimizer, loader=train_loader, num_epochs=NUM_EPOCHS, epoch=epoch)
         val_loss, avg_psnr_metric, avg_ssim_metric, val_loss_log = validation(model, DEVICE, criterion, val_loader)
@@ -130,7 +146,7 @@ if __name__ == "__main__":
         total_ssim_metric.append(avg_ssim_metric)
 
         if epoch > 3:
-            if train_loss >= (sum(total_train_loss[-3:]/3)):
+            if train_loss >= (sum(total_train_loss[-3:]) / 3):
                 learning_rate /= 10
                 update_lr(optimizer, learning_rate)
 

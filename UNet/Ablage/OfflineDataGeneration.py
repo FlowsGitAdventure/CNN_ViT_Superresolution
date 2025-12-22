@@ -26,8 +26,8 @@ SCALE_FACTOR = 2
 PATCH_SIZE_HR = PATCH_SIZE_LR * SCALE_FACTOR
 STRIDE = 10
 
-HR_INPUT_PATH = "../Downsampling/High_Res_08_Rician"
-LR_INPUT_PATH = "../Downsampling/Low_Res_08_Rician"
+HR_INPUT_PATH = "../../Downsampling/High_Res_08_Rician"
+LR_INPUT_PATH = "../../Downsampling/Low_Res_08_Rician"
 HR_NUMPY_OUTDIR = "./data/High_Res_Numpy_08"
 LR_NUMPY_OUTDIR = "./data/Low_Res_Numpy_08"
 os.makedirs(HR_NUMPY_OUTDIR, exist_ok=True)

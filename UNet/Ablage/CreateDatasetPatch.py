@@ -12,8 +12,8 @@ class RandomDataSelector:
         self.n_train = 50
         self.n_validation = 10
 
-        self.lr_filepath = "./data/Low_Res_Numpy_08"
-        self.hr_filepath = "./data/High_Res_Numpy_08"
+        self.lr_filepath = "../data/Low_Res_Numpy_08"
+        self.hr_filepath = "../data/High_Res_Numpy_08"
 
     def get_data(self):
         # list all data

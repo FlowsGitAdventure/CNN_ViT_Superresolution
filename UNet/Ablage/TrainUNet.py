@@ -8,8 +8,8 @@ from UNet.trash.FMRISuperResData import FMRISuperResDataset
 
 
 def train():
-    LR_DIR = './data/Low_Res_08'
-    HR_DIR = './data/High_Res_08'
+    LR_DIR = '../data/Low_Res_08'
+    HR_DIR = '../data/High_Res_08'
 
     # Config for CPU/Stability
     BATCH_SIZE = 2
@@ -18,7 +18,7 @@ def train():
     NUM_EPOCHS = 20
 
     DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    SAVE_DIR = './checkpoints'
+    SAVE_DIR = '../checkpoints'
     os.makedirs(SAVE_DIR, exist_ok=True)
 
     print(f"Training on: {DEVICE}")

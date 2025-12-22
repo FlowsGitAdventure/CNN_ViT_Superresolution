@@ -57,5 +57,5 @@ class GetRandomData():
 if __name__ == "__main__":
     lr_filepath = '../Downsampling/Low_Res_08_Rician'
     hr_filepath = '../Downsampling/High_Res_08_Rician'
-    create_dataset = GetRandomData(lr_filepath, hr_filepath, n_train, n_validation, False)
+    create_dataset = GetRandomData(lr_filepath, hr_filepath, 16, 4, False)
     print(create_dataset.get_data())
