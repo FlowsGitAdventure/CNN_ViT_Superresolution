@@ -42,11 +42,12 @@ class UNet(nn.Module):
         )
 
     def forward(self, x):
-        # Residual Connection (Interpolated Input)
-        # x_residual_upsampled = F.interpolate(x, scale_factor=2, mode='trilinear', align_corners=False)
-        target_d, target_h, target_w = x.shape[2] * 2, x.shape[3] * 2, x.shape[4] * 2
+        b, t, d, h, w = x.shape
+
+        # 1. Create Initial Residual
+        target_d, target_h, target_w = d * 2, h * 2, w * 2
         x_residual_upsampled = F.interpolate(x, size=(target_d, target_h, target_w),
-                                             mode='trilinear', align_corners=False)
+                              mode='trilinear', align_corners=False)
 
         # Encoder
         down_1, p1 = self.down_conv1(x)
@@ -66,9 +67,19 @@ class UNet(nn.Module):
         # Super-Res Upscale
         features_hr = self.final_upsample_block(up_4)
 
-        # Shape Check for Padding safety
-        if features_hr.shape != x_residual_upsampled.shape:
-            x_residual_upsampled = F.interpolate(features_hr, size=features_hr.shape[2:], mode='trilinear', align_corners=False)
+        # 4. Reshape features_hr back to 5D to match the Residual
+        b, t = x.shape[0], x.shape[1]
+        out_c = features_hr.shape[1]
+        features_hr = features_hr.view(b, t, out_c, *features_hr.shape[2:])
+
+        # 5. FIXED: Correct Interpolation of Residual
+        if features_hr.shape[3:] != x_residual_upsampled.shape[2:]:
+            x_residual_upsampled = F.interpolate(x_residual_upsampled, size=features_hr.shape[3:],
+                                  mode='trilinear', align_corners=False)
+
+        # 6. Final Addition
+        if x_residual_upsampled.ndim == 5:
+            x_residual_upsampled = x_residual_upsampled.unsqueeze(2)
 
         out = features_hr + x_residual_upsampled
         return out
