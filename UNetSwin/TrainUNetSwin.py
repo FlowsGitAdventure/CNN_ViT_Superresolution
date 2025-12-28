@@ -7,13 +7,13 @@ import os
 
 # --- MODEL IMPORT ---
 # Ensure this matches your new Swin filename
-from MonaiSwinEncoderSR import MonaiSwinEncoderSR
+from UNetSwinSuperResolution import MonaiSwinEncoderSR
 
 from GetRandomData import GetRandomData
-from CreateDatasetHybridViT import CreateDataset
-from fMRIHybridLoss import HybridLossSSIML1Temp as combined_loss
-from PeakSignalNoiseRatio import calculate_psnr
-from StructuralSimilarity import calculate_ssim_score
+from CreateDatasetSwin import CreateDataset
+from fMRIHybridLossSwin import HybridLossSSIML1Temp as combined_loss
+from SSIMSwin import calculate_ssim_score
+from PSNRSwin import calculate_psnr
 
 # Paths
 LR_DIR = '/fast_storage/flk7161/data/lr'

@@ -76,7 +76,7 @@ class CreateDataset(Dataset):
             hr_path = os.path.join(self.hr_dir, hr_f)
 
             lr_obj = nib.load(lr_path)
-            hr_obj = nib.load(hr_path)
+            # hr_obj = nib.load(hr_path)
             # if not np.allclose(lr_obj.affine, hr_obj.affine, atol=1e-5):
             #     print(f"{lr_obj.affine} {hr_obj.affine}")
             #     print(f"Warning: Affine mismatch in {lr_f}!")
@@ -132,6 +132,7 @@ class CreateDataset(Dataset):
 
             lr_tensor = lr_vol.repeat(self.time_per_sample, 1, 1, 1)
             hr_tensor = hr_vol.repeat(self.time_per_sample, 1, 1, 1)
+
 
         lr_tensor = self._pad_to_multiple(lr_tensor)
         hr_tensor = self._pad_to_multiple(hr_tensor)
