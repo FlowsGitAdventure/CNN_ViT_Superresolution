@@ -98,6 +98,9 @@ def validation(model, device, loss_fn, loader):
             total_ssim += batch_ssim.item() * batch_size
             total_samples += batch_size
 
+            print(f"Pred Range: {out.min().item():.2f} to {out.max().item():.2f}")
+            print(f"GT Range: {hr.min().item():.2f} to {hr.max().item():.2f}")
+
     return total_psnr / total_samples, total_ssim / total_samples, total_val_loss / total_samples
 
 
