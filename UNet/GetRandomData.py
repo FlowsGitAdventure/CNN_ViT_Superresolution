@@ -2,7 +2,7 @@ import os
 import random
 
 
-class GetRandomData():
+class GetRandomData:
     def __init__(self, lr_filepath, hr_filepath, n_train=0, n_validation=0, is_random=True):
         self.lr_filepath = lr_filepath
         self.hr_filepath = hr_filepath
@@ -50,12 +50,5 @@ class GetRandomData():
                 if os.path.basename(f).split('_')[0] in hr_lookup
             ]
 
-        # print(train_files[0])
         return train_files, validation_files, hr_train_files, hr_validation_files
 
-
-if __name__ == "__main__":
-    lr_filepath = '../Downsampling/Low_Res_08_Rician'
-    hr_filepath = '../Downsampling/High_Res_08_Rician'
-    create_dataset = GetRandomData(lr_filepath, hr_filepath, 16, 4, False)
-    print(create_dataset.get_data())

@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from DoubleConvolution import DoubleConv
+
 
 
 class HybridEncoderBlock(nn.Module):
@@ -10,12 +12,8 @@ class HybridEncoderBlock(nn.Module):
         # We use in_channels=1 because we process each time-step
         # as a separate item in the batch to learn shared spatial features.
         self.cnn_path = nn.Sequential(
-            nn.Conv3d(1, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm3d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm3d(out_channels),
-            nn.ReLU(inplace=True)
+            DoubleConv(1, out_channels),
+            DoubleConv(out_channels, out_channels),
         )
 
         # --- ViT PATH ---
