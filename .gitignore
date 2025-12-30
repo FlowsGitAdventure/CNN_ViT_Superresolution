@@ -1,6 +1,7 @@
 # My stuff
 dataset/
 ResNet/data/
+studyforrest-data-multires7t
 ausgabe.png
 MulticlassCNN.pth
 *.nii
