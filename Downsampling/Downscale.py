@@ -2,10 +2,11 @@ import os
 import numpy as np
 import nibabel as nib
 import uuid
-import matplotlib.pyplot as plt
+import time
+from tqdm import tqdm
 
 # CONFIGURATION
-HR_INPUT_PATH = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\studyforrest-data-multires7t\\sub-04\\ses-r08\\func"
+HR_INPUT_PATH = "C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\studyforrest-data-multires7t\\data"
 LR_OUT_DIR = "./Low_Res_08_NEW"
 HR_OUT_DIR = "./High_Res_08_NEW"
 os.makedirs(LR_OUT_DIR, exist_ok=True)
@@ -58,7 +59,7 @@ def downsample_with_rician_noise(img_obj, scale_factor, noise_factor):
     slice_y = slice(start_y, end_y)
     slice_z = slice(start_z, end_z)
 
-    print(f"  Processing {t} timeframes (Target shape: {new_x, new_y, new_z}) iteratively to save RAM...")
+    # print(f"  Processing {t} timeframes (Target shape: {new_x, new_y, new_z}) iteratively to save RAM...")
 
     for i in range(t):
         # Extract single 3D volume
@@ -109,11 +110,13 @@ def downsample_with_rician_noise(img_obj, scale_factor, noise_factor):
 
 def main():
     files = get_file_names()
-    for file in files:
+    total_start_time = time.time()
+
+    for file in tqdm(files, desc="Processing Files", unit="file"):
         filename = file.split('.')[0]
         filepath = os.path.join(HR_INPUT_PATH, file)
 
-        print(f"Processing {filename}...")
+        # print(f"Processing {filename}...")
         img_4d = nib.load(filepath)
         current_noise_level = np.random.uniform(MIN_NOISE, MAX_NOISE)
         lr_img = downsample_with_rician_noise(img_4d, scale_factor=DOWN_SCALE_FACTOR, noise_factor=current_noise_level)
@@ -132,9 +135,18 @@ def main():
         lr_img.header.set_data_dtype(np.float32)
         nib.save(lr_img, lr_out_path)
         nib.save(img_4d, hr_out_path)
-        print(f"  Saved pairs to {LR_OUT_DIR} and {HR_OUT_DIR}")
+        # print(f"Original Timepoints: {img_4d.shape[3]} | Downsampled Timepoints: {lr_img.shape[3]}")
+        # print(f"  Saved pairs to {LR_OUT_DIR} and {HR_OUT_DIR}")
 
+    total_end_time = time.time()
+    duration = total_end_time - total_start_time
+
+    print("\n" + "=" * 30)
     print("Data preparation complete.")
+    print(f"Total files processed: {len(files)}")
+    print(f"Total time taken: {duration / 60:.2f} minutes")
+    print(f"Average time per file: {duration / len(files):.2f} seconds")
+    print("=" * 30)
 
 
 if __name__ == "__main__":
