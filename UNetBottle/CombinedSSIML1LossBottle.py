@@ -17,7 +17,7 @@ class HybridLossSSIML1Temp(nn.Module):
         if pred.ndim == 6:
             pred = pred.squeeze(2)
 
-        if pred.shape[-3:] != target.shape[-3:]:
+        if pred.shape != target.shape:
             pred = F.interpolate(pred, size=target.shape[-3:], mode='trilinear', align_corners=False)
 
         # 2. Spatial Loss (L1) - High-frequency detail recovery

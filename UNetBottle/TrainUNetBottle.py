@@ -108,7 +108,8 @@ def validation(model, device, loss_fn, loader):
 
             # 3. Dynamic Data Range Calculation
             current_range = hr.max() - hr.min()
-            if current_range == 0: current_range = 1.0  # Prevent div by zero
+            if current_range == 0:
+                current_range = 1.0  # Prevent div by zero
 
             # 4. Metric Calculation
             batch_psnr = calculate_psnr(out, hr, data_range=current_range)

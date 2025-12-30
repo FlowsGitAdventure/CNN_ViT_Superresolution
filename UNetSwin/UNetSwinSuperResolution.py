@@ -4,7 +4,7 @@ from monai.networks.nets.swin_unetr import SwinTransformer
 from UpSampleSwin import UpSample
 
 
-class MonaiSwinEncoderSR(nn.Module):
+class MonaiSwinSR(nn.Module):
     def __init__(self, in_channels=1, out_channels=1, base_filters=24, window_size=(4, 4, 4)):
         super().__init__()
         f = base_filters

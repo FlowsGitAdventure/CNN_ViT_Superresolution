@@ -7,7 +7,7 @@ import os
 
 # --- MODEL IMPORT ---
 # Ensure this matches your new Swin filename
-from UNetSwinSuperResolution import MonaiSwinEncoderSR
+from UNetSwinSuperResolution import MonaiSwinSR
 
 from GetRandomData import GetRandomData
 from CreateDatasetSwin import CreateDataset
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     # Model Initialization
     # NOTE: Swin handles Time via internal reshaping, so in_channels=1 (Shared Weights)
-    model = MonaiSwinEncoderSR(in_channels=1, out_channels=1, base_filters=BASE_FILTERS).to(DEVICE)
+    model = MonaiSwinSR(in_channels=1, out_channels=1, base_filters=BASE_FILTERS).to(DEVICE)
 
     optimizer = optim.AdamW(model.parameters(), lr=START_LR, weight_decay=1e-5)
     criterion = combined_loss(data_range=DATA_RANGE)

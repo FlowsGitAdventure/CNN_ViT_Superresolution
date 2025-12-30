@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 #img = nib.load("C:\\Users\\floko\\Desktop\\Dev\\CNN_ViT_Superresolution\\studyforrest-data-multires7t\\sub-04\\ses-r08\\func\\sub-04_ses-r08_task-coverage_rec-dico_bold.nii.gz")
-img = nib.load('./Low_Res_08_Rician_test\\e0f386de-8908-4716-9a7f-eff327b80506_t091_sub-04_ses-r08_task-orientation_run-03_bold_LR.nii.gz', )
+img = nib.load('./Low_Res_08_NEW\\7892cf58-1f5f-45b2-b4e9-cb4e8253f354_sub-04_ses-r08_task-coverage_bold_LR.nii.gz', )
 # img = nib.load("./output_hr.nii.gz")
 data = img.get_fdata()
-plt.imshow(data[:, :, 15], cmap='gray')
+plt.imshow(data[:, :, 7, 0], cmap='gray')
 plt.show()
 
 import nibabel as nib

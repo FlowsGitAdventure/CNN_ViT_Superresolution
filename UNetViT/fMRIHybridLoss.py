@@ -15,7 +15,7 @@ class HybridLossSSIML1Temp(nn.Module):
 
     def forward(self, pred, target):
         if pred.shape != target.shape:
-            pred = F.interpolate(pred, size=target.shape[2:], mode='trilinear', align_corners=False)
+            pred = F.interpolate(pred, size=target.shape[-3:], mode='trilinear', align_corners=False)
 
         # 1. Spatial Loss (L1)
         loss_l1 = self.l1(pred, target)
