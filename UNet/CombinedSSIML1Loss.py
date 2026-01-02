@@ -5,7 +5,7 @@ from pytorch_msssim import ssim
 
 
 class CombinedSSIML1Loss(nn.Module):
-    # ToDo: Got rid of reduction in L1 check difference
+    # ToDo: Get rid of reduction in L1 check difference
     def __init__(self, lambda_l1=1.0, lambda_ssim=0.2, lambda_temp=0.1, data_range=6.0):
         super().__init__()
         self.l1 = nn.L1Loss()
@@ -32,6 +32,9 @@ class CombinedSSIML1Loss(nn.Module):
         pred_2d = pred.reshape(total_slices, 1, h, w)
         target_2d = target.reshape(total_slices, 1, h, w)
 
+        ssim_val = ssim(pred_2d, target_2d, data_range=self.data_range, size_average=True)
+        loss_ssim = 1.0 - ssim_val
+
         # Temporal Consistency Loss - Only calculate if Time > 1
         if pred.shape[1] > 1:
             diff_pred = pred[:, 1:] - pred[:, :-1]
@@ -39,9 +42,6 @@ class CombinedSSIML1Loss(nn.Module):
             loss_temp = self.l1(diff_pred, diff_target)
         else:
             loss_temp = torch.tensor(0.0).to(pred.device)
-
-        ssim_val = ssim(pred_2d, target_2d, data_range=self.data_range, size_average=True)
-        loss_ssim = 1.0 - ssim_val
 
         total_loss = (self.lambda_l1 * loss_l1) + \
                      (self.lambda_ssim * loss_ssim) + \

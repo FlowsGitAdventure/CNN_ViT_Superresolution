@@ -3,7 +3,7 @@ import torch.nn as nn
 from DoubleConvolution import DoubleConv
 
 
-
+# Info: Keep this for ViT and CNN Hybrid approach
 class HybridEncoderBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
