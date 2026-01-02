@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from DownSample import DownSample
@@ -7,8 +6,12 @@ from UpSample import UpSample
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, out_channels, base_filters=32):
+    def __init__(self, in_channels, out_channels, base_filters=32, scale_factor=2):
         super().__init__()
+
+        self.scale_factor = scale_factor
+        if scale_factor > 2:
+            self.scale_factor = 4
 
         f = base_filters
 
@@ -31,20 +34,19 @@ class UNet(nn.Module):
         self.final_upsample_block = nn.Sequential(
             # First 2x upscale
             nn.ConvTranspose3d(f, f, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(inplace=True),
-
-            # Second 2x upscale
-            # nn.ConvTranspose3d(f, f, kernel_size=4, stride=2, padding=1),
-            # nn.ReLU(inplace=True),
-
-            # Final convolution to output
-            nn.Conv3d(f, out_channels, kernel_size=3, padding=1)
+            nn.ReLU(inplace=True)
         )
+
+        self.final_conv = nn.Conv3d(f, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
         # Residual Connection (Interpolated Input)
         # x_residual_upsampled = F.interpolate(x, scale_factor=2, mode='trilinear', align_corners=False)
+
         target_d, target_h, target_w = x.shape[2] * 2, x.shape[3] * 2, x.shape[4] * 2
+        if self.scale_factor == 4:
+            target_d, target_h, target_w = x.shape[2] * 2, x.shape[3] * 2, x.shape[4] * 2
+
         x_residual_upsampled = F.interpolate(x, size=(target_d, target_h, target_w),
                                              mode='trilinear', align_corners=False)
 
@@ -65,6 +67,9 @@ class UNet(nn.Module):
 
         # Super-Res Upscale
         features_hr = self.final_upsample_block(up_4)
+        if self.scale_factor == 4:
+            features_hr = self.final_upsample_block(features_hr)
+        features_hr = self.final_conv(features_hr)
 
         # Shape Check for Padding safety
         if features_hr.shape != x_residual_upsampled.shape:

@@ -1,58 +1,3 @@
-# import os
-# import nibabel as nib
-# import torch
-# from torch.utils.data import Dataset, DataLoader
-#
-# from GetRandomData import GetRandomData
-#
-#
-# class CreateDataset(Dataset):
-#     def __init__(self, lr_files, hr_files, lr_dir, hr_dir):
-#         self.lr_dir = lr_dir
-#         self.hr_dir = hr_dir
-#         self.lr_files = lr_files
-#         self.hr_files = hr_files
-#         assert len(self.lr_files) == len(self.hr_files), "Error: HR and LR lists have different lengths!"
-#
-#     def __len__(self):
-#         return len(self.lr_files)
-#
-#     def __getitem__(self, idx):
-#         lr_path = os.path.join(self.lr_dir, self.lr_files[idx])
-#         hr_path = os.path.join(self.hr_dir, self.hr_files[idx])
-#
-#         try:
-#             lr_array = nib.load(lr_path)
-#             lr_array = lr_array.get_fdata()
-#
-#             hr_array = nib.load(hr_path)
-#             hr_array = hr_array.get_fdata()
-#
-#             # --- 3. Normalisierung & Tensor ---
-#             lr_array = (lr_array - lr_array.min()) / (lr_array.max() - lr_array.min() + 1e-8)
-#             hr_array = (hr_array - hr_array.min()) / (hr_array.max() - hr_array.min() + 1e-8)
-#
-#             # 1. Convert to Tensor (currently 4D: X, Y, Z, T)
-#             lr_tensor = torch.from_numpy(lr_array).float()
-#             hr_tensor = torch.from_numpy(hr_array).float()
-#
-#             # 2. Check dimensions and Permute
-#             # We want (T, X, Y, Z) to fit (Batch, Channel, Depth, Height, Width)
-#             if lr_tensor.ndim == 4:
-#                 lr_tensor = lr_tensor.permute(3, 0, 1, 2)
-#                 hr_tensor = hr_tensor.permute(3, 0, 1, 2)
-#             elif lr_tensor.ndim == 3:
-#                 # If the file is only 3D, add the channel dimension manually
-#                 lr_tensor = lr_tensor.unsqueeze(0)
-#                 hr_tensor = hr_tensor.unsqueeze(0)
-#
-#             return lr_tensor, hr_tensor
-#
-#         except Exception as e:
-#             print(f"Error loading {lr_path}: {e}")
-#             return self.__getitem__((idx + 1) % len(self.lr_files))
-
-
 import os
 import nibabel as nib
 import torch
@@ -90,9 +35,13 @@ class CreateDataset(Dataset):
                 self.samples.append({'lr': lr_f, 'hr': hr_f, 't': None})
 
     def _normalize(self, data):
-        p99 = np.percentile(data, 99)
+        p99 = np.percentile(data, 99.5)
         data = np.clip(data, 0, p99)
-        return (data - data.min()) / (data.max() - data.min() + 1e-8)
+        mean = np.mean(data, axis=3, keepdims=True)
+        std = np.std(data, axis=3, keepdims=True) + 1e-8
+        normalized = (data - mean) / std
+
+        return normalized
 
     def _pad_to_multiple(self, tensor, multiple=16):
         d, h, w = tensor.shape[1:]
@@ -129,19 +78,11 @@ class CreateDataset(Dataset):
 
         # Augmentation
         if self.train and torch.rand(1) > 0.5:
-            # Flip on the X-axis (dim 1 because dim 0 is Channels)
             lr_tensor = torch.flip(lr_tensor, dims=[1])
             hr_tensor = torch.flip(hr_tensor, dims=[1])
 
         return lr_tensor, hr_tensor
 
-
-# if __name__ == "__main__":
-#    lr_filepath = '../Downsampling/Low_Res_08_Rician'
-#    hr_filepath = '../Downsampling/High_Res_08_Rician'
-#    data_selector = GetRandomData(lr_filepath, hr_filepath, 16, 4, False)
-#    train_files, validation_files, hr_train_files, hr_validation_files = data_selector.get_data()
-#    train_dataset = CreateDataset(train_files, hr_train_files, lr_filepath, hr_filepath)
 
 
 
