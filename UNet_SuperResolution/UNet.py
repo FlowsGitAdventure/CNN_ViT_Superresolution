@@ -22,13 +22,14 @@ class UNet(nn.Module):
         self.down_conv4 = DownSample(f * 4, f * 8, use_norm=True)
 
         # Bottleneck
-        self.bottle_neck = DoubleConv(f * 8, f * 16, use_norm=True)  # e.g., 512
+        self.bottle_neck = DoubleConv(f * 8, f * 16, use_norm=False)  # e.g., 512
 
         # Decoder
-        self.up_conv1 = UpSample(f * 16, f * 8, use_norm=True)
-        self.up_conv2 = UpSample(f * 8, f * 4, use_norm=True)
-        self.up_conv3 = UpSample(f * 4, f * 2, use_norm=False)
-        self.up_conv4 = UpSample(f * 2, f, use_norm=False)
+        # Decoder - Now passing the correct skip_channels for each level
+        self.up_conv1 = UpSample(f * 16, f * 8, use_norm=True, skip_channels=f * 8)
+        self.up_conv2 = UpSample(f * 8, f * 4, use_norm=True, skip_channels=f * 4)
+        self.up_conv3 = UpSample(f * 4, f * 2, use_norm=False, skip_channels=f * 2)
+        self.up_conv4 = UpSample(f * 2, f, use_norm=False, skip_channels=f)
 
         # Super-Resolution Upsampler (4x)
         self.final_upsample_block = nn.Sequential(
