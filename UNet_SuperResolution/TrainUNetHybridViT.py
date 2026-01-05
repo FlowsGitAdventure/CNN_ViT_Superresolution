@@ -139,7 +139,8 @@ if __name__ == "__main__":
     print(f"Training on: {DEVICE}")
 
     # Model Initialization
-    model = UNet(in_channels=1, out_channels=1, base_filters=BASE_FILTERS).to(DEVICE)
+    sample_lr, _ = train_dataset[0]
+    model = UNet(in_channels=sample_lr.shape[0], out_channels=sample_lr.shape[0], base_filters=BASE_FILTERS).to(DEVICE)
     torch.cuda.empty_cache()
     optimizer = torch.optim.AdamW(
         model.parameters(),
