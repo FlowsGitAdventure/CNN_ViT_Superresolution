@@ -4,7 +4,7 @@ import torch.nn as nn
 # ToDo: Add a mode option for the different models
 # If it is CNN only us Instance norm, the rest Layer norm (if needed).
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels, use_norm=True, dropout_prob=0.0):
+    def __init__(self, in_channels, out_channels, use_norm=False, dropout_prob=0.0):
         super().__init__()
 
         # Layer 1
