@@ -22,10 +22,10 @@ HR_DIR = '/fast_storage/flk7161/data/hr'
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BASE_FILTERS = 32
 BATCH_SIZE = 1
-START_LR = 0.0001
-NUM_EPOCHS = 20
+START_LR = 5e-5
+NUM_EPOCHS = 40
 DATA_RANGE = 6.0   # For z-Normalization
-ACCUMULATION_STEPS = 4
+ACCUMULATION_STEPS = 8
 SAVE_DIR = './CheckpointBaseUNet'   # ToDO: find fitting name
 os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -70,7 +70,8 @@ def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs, scaler):
         progress_bar.set_postfix(
             L1=f"{loss_components['L1']:.4f}",
             Temp=f"{loss_components['Temp']:.4f}",
-            SSIM=f"{loss_components['SSIM']:.4f}"
+            SSIM=f"{loss_components['SSIM']:.4f}",
+            Edge=f"{loss_components['Edge']:.4f}"
         )
 
         # Reset LR to START_LR after warmup
@@ -79,7 +80,6 @@ def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs, scaler):
                 param_group['lr'] = START_LR
 
     avg_loss = sum(loss_log) / len(loss_log)
-    print(f'Epoch {epoch} | Training Loss: {avg_loss:.4f}')
     return avg_loss
 
 
@@ -138,8 +138,10 @@ if __name__ == "__main__":
 
     print(f"Training on: {DEVICE}")
 
-    # Model Initialization
-    model = UNet(in_channels=1, out_channels=1, base_filters=BASE_FILTERS).to(DEVICE)
+    sample_lr, _ = train_dataset[0]
+    channels_in = sample_lr.shape[0]
+    print(f"Train with {sample_lr.shape}")
+    model = UNet(in_channels=channels_in, out_channels=channels_in, base_filters=BASE_FILTERS).to(DEVICE)
     torch.cuda.empty_cache()
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -148,7 +150,7 @@ if __name__ == "__main__":
         betas=(0.9, 0.999),
         eps=1e-8
     )
-    criterion = combined_loss()   # ToDo: Control loss factors as hyperparameters (not pre set)
+    criterion = combined_loss(DEVICE)   # ToDo: Control loss factors as hyperparameters (not pre set)
 
     scaler = torch.amp.GradScaler("cuda")   # ToDo: Here also hyperparameters
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -192,8 +194,6 @@ if __name__ == "__main__":
 
     # Visualizing results
     plt.figure(figsize=(15, 5))
-
-    plt.figure(figsize=(12, 5))
     plt.subplot(1, 2, 1)
     plt.plot(metrics["train_loss"], label="Train")
     plt.plot(metrics["val_loss"], label="Val")

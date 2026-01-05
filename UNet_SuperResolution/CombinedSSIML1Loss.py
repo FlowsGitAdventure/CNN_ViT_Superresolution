@@ -2,16 +2,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_msssim import ssim
+from functions.SobelEdgeLoss3D import SobelEdgeLoss3D
 
 
 class CombinedSSIML1Loss(nn.Module):
     # ToDo: Get rid of reduction in L1 check difference
-    def __init__(self, lambda_l1=1.0, lambda_ssim=0.2, lambda_temp=0.1, data_range=6.0):
+    def __init__(self, device, lambda_l1=0.5, lambda_ssim=0.8, lambda_temp=0.05, lambda_edge=0.5, data_range=6.0):
         super().__init__()
+        self.sobel_edge = SobelEdgeLoss3D(device)
         self.l1 = nn.L1Loss()
         self.lambda_l1 = lambda_l1
         self.lambda_ssim = lambda_ssim
         self.lambda_temp = lambda_temp
+        self.lambda_edge = lambda_edge
         self.data_range = data_range
 
     def forward(self, pred, target):
@@ -43,12 +46,16 @@ class CombinedSSIML1Loss(nn.Module):
         else:
             loss_temp = torch.tensor(0.0).to(pred.device)
 
+        edge_loss = self.sobel_edge.forward(pred, target)
+
         total_loss = (self.lambda_l1 * loss_l1) + \
                      (self.lambda_ssim * loss_ssim) + \
-                     (self.lambda_temp * loss_temp)
+                     (self.lambda_temp * loss_temp) + \
+                     (self.lambda_edge * edge_loss)
 
         return total_loss, {
             "L1": loss_l1.item(),
             "SSIM": ssim_val.item(),
-            "Temp": loss_temp.item()
+            "Temp": loss_temp.item(),
+            "Edge": edge_loss.item()
         }
