@@ -8,7 +8,7 @@ import os
 # --- MODEL IMPORT ---
 from UNet import UNet
 from GetRandomData import GetRandomData
-from CreateDataset import CreateDataset
+from CreateDataset import UnifiedSRDataset
 from CombinedSSIML1Loss import CombinedSSIML1Loss as combined_loss
 from PeakSignalNoiseRatio import calculate_psnr
 from StructuralSimilarity import calculate_ssim_score
@@ -23,10 +23,11 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BASE_FILTERS = 32
 BATCH_SIZE = 1
 START_LR = 5e-5
+WEIGHT_DECAY = 1e-3
 NUM_EPOCHS = 40
-DATA_RANGE = 6.0   # For z-Normalization
+DATA_RANGE = 1.0
 ACCUMULATION_STEPS = 8
-SAVE_DIR = './CheckpointBaseUNet'   # ToDO: find fitting name
+SAVE_DIR = './CheckpointBaseUNet'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 
@@ -37,34 +38,34 @@ def update_lr(optimizer, lr):
 
 def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs, scaler):
     model.train()
+    optimizer.zero_grad(set_to_none=True)
     loss_log = []
 
-    progress_bar = tqdm(enumerate(loader), total=len(loader), desc=f"Epoch {epoch}/{num_epochs}")
+    progress_bar = tqdm(enumerate(loader), total=len(loader),
+                        desc=f"Epoch {epoch}/{num_epochs}")
 
     for batch_idx, (lr, hr) in progress_bar:
-        # 1. Linear Warmup for the first epoch only
+
         if epoch == 0:
             warmup_factor = (batch_idx + 1) / len(loader)
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = START_LR * warmup_factor
+            for pg in optimizer.param_groups:
+                pg['lr'] = START_LR * warmup_factor
 
         lr, hr = lr.to(device, non_blocking=True), hr.to(device, non_blocking=True)
 
-        # Forward step
-        with torch.amp.autocast('cuda'):
+        with torch.amp.autocast(device_type=device, enabled=(device == "cuda")):
             out = model(lr)
-            loss, loss_components = loss_fn(out, hr)
+            loss, loss_components = loss_fn(out, hr, epoch)
             loss = loss / ACCUMULATION_STEPS
 
-        # Backward step
         scaler.scale(loss).backward()
 
         if (batch_idx + 1) % ACCUMULATION_STEPS == 0:
             scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             scaler.step(optimizer)
             scaler.update()
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
         loss_log.append(loss.item() * ACCUMULATION_STEPS)
         progress_bar.set_postfix(
@@ -74,10 +75,16 @@ def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs, scaler):
             Edge=f"{loss_components['Edge']:.4f}"
         )
 
-        # Reset LR to START_LR after warmup
-        if epoch == 0:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = START_LR
+    if len(loader) % ACCUMULATION_STEPS != 0:
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.zero_grad(set_to_none=True)
+
+    if epoch == 0:
+        for pg in optimizer.param_groups:
+            pg['lr'] = START_LR
 
     avg_loss = sum(loss_log) / len(loss_log)
     return avg_loss
@@ -130,8 +137,8 @@ if __name__ == "__main__":
     data_selector = GetRandomData(LR_DIR, HR_DIR, 180, 20, is_random=True)
     train_files, val_files, hr_train_files, hr_val_files = data_selector.get_data()
 
-    train_dataset = CreateDataset(train_files, hr_train_files, LR_DIR, HR_DIR)
-    val_dataset = CreateDataset(val_files, hr_val_files, LR_DIR, HR_DIR)
+    train_dataset = UnifiedSRDataset(train_files, hr_train_files, LR_DIR, HR_DIR, normalization="cnn_minmax")
+    val_dataset = UnifiedSRDataset(val_files, hr_val_files, LR_DIR, HR_DIR, normalization="cnn_minmax", train=False)
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
@@ -146,15 +153,16 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=START_LR,
-        weight_decay=0.05,
+        weight_decay=WEIGHT_DECAY,
         betas=(0.9, 0.999),
         eps=1e-8
     )
-    criterion = combined_loss(DEVICE)   # ToDo: Control loss factors as hyperparameters (not pre set)
+    criterion = combined_loss(DEVICE, NUM_EPOCHS, data_range=DATA_RANGE)   # ToDo: Control loss factors as hyperparameters (not pre set)
 
     scaler = torch.amp.GradScaler("cuda")   # ToDo: Here also hyperparameters
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
+        threshold=0.01,
         mode='max',
         factor=0.2,
         patience=5,
