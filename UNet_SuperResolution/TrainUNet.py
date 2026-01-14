@@ -10,21 +10,20 @@ from UNet import UNet
 from GetRandomData import GetRandomData
 from CreateDataset import UnifiedSRDataset
 from CombinedSSIML1Loss import CombinedSSIML1Loss as combined_loss
+from VolumetricSRLoss import VolumetricSRLoss
 from PeakSignalNoiseRatio import calculate_psnr
 from StructuralSimilarity import calculate_ssim_score
 
-
 LR_DIR = '/fast_storage/flk7161/data/lr'
 HR_DIR = '/fast_storage/flk7161/data/hr'
-
 
 # Hyperparameters
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BASE_FILTERS = 32
 BATCH_SIZE = 1
-START_LR = 5e-5
+START_LR = 1e-4
 WEIGHT_DECAY = 1e-3
-NUM_EPOCHS = 40
+NUM_EPOCHS = 10
 DATA_RANGE = 1.0
 ACCUMULATION_STEPS = 8
 SAVE_DIR = './CheckpointBaseUNet'
@@ -55,7 +54,7 @@ def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs, scaler):
 
         with torch.amp.autocast(device_type=device, enabled=(device == "cuda")):
             out = model(lr)
-            loss, loss_components = loss_fn(out, hr, epoch)
+            loss, loss_components = loss_fn(out, hr)
             loss = loss / ACCUMULATION_STEPS
 
         scaler.scale(loss).backward()
@@ -69,10 +68,10 @@ def train(model, device, loader, optimizer, loss_fn, epoch, num_epochs, scaler):
 
         loss_log.append(loss.item() * ACCUMULATION_STEPS)
         progress_bar.set_postfix(
-            L1=f"{loss_components['L1']:.4f}",
-            Temp=f"{loss_components['Temp']:.4f}",
-            SSIM=f"{loss_components['SSIM']:.4f}",
-            Edge=f"{loss_components['Edge']:.4f}"
+            L1=f"{loss_components['Charb']:.4f}",
+            Temp=f"{loss_components['SSIM3D']:.4f}",
+            SSIM=f"{loss_components['Grad']:.4f}",
+            Edge=f"{loss_components['LowF']:.4f}"
         )
 
     if len(loader) % ACCUMULATION_STEPS != 0:
@@ -134,7 +133,7 @@ def validation(model, device, loss_fn, loader):
 
 if __name__ == "__main__":
     # Data Setup
-    data_selector = GetRandomData(LR_DIR, HR_DIR, 180, 20, is_random=True)
+    data_selector = GetRandomData(LR_DIR, HR_DIR, 40, 4, is_random=True)
     train_files, val_files, hr_train_files, hr_val_files = data_selector.get_data()
 
     train_dataset = UnifiedSRDataset(train_files, hr_train_files, LR_DIR, HR_DIR, normalization="cnn_minmax")
@@ -157,9 +156,12 @@ if __name__ == "__main__":
         betas=(0.9, 0.999),
         eps=1e-8
     )
-    criterion = combined_loss(DEVICE, NUM_EPOCHS, data_range=DATA_RANGE)   # ToDo: Control loss factors as hyperparameters (not pre set)
+    criterion = criterion = VolumetricSRLoss(data_range=1.0, lambda_charb=0.7, lambda_ssim=1.0, lambda_grad=0.5,
+                                             lambda_lowfreq=0.1)
 
-    scaler = torch.amp.GradScaler("cuda")   # ToDo: Here also hyperparameters
+    # ToDo: Control loss factors as hyperparameters (not pre set)
+
+    scaler = torch.amp.GradScaler("cuda")  # ToDo: Here also hyperparameters
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         threshold=0.01,
@@ -175,6 +177,8 @@ if __name__ == "__main__":
 
     print(f"Starting Training on {DEVICE}...")
     for epoch in range(NUM_EPOCHS):
+        criterion.epoch = epoch
+
         t_loss = train(model, DEVICE, train_loader, optimizer, criterion, epoch, NUM_EPOCHS, scaler)
         torch.cuda.empty_cache()
 
