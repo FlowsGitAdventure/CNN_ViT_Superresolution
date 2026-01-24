@@ -5,6 +5,7 @@ import os
 import torch.nn.functional as F
 from UNetAnisotropic import UNet
 import matplotlib.pyplot as plt
+import cv2
 
 # --- CONFIGURATION ---
 # Scale factors must match your UNet upscale logic (D=2, H=2, W=1)
@@ -43,55 +44,69 @@ def load_and_preprocess(data_chunk, multiple=16):
     return tensor_padded, (pd, ph, pw), (data_min, data_max), normalized_data.shape[:3]
 
 
-def show_result(output_image="sr_comparison_result_heatmap.png"):
+def show_result():
     # 1. Load the data
     data_lr = nib.load(LR_INPUT).get_fdata()
     data_sr = nib.load(OUTPUT).get_fdata()
     data_gt = nib.load(GT_FILE).get_fdata()
 
-    # 2. Select Axial Slice (W-axis)
+    # 2. Slice Selection (W-axis)
+    # W-scale is 1, so slice_idx is the same for all
     slice_idx = data_lr.shape[2] // 2
 
-    # 3. Extract views (First timepoint for 4D fMRI)
     def prep_view(data, s_idx):
+        # Extract 2D slice
         v = data[:, :, s_idx, 0] if data.ndim == 4 else data[:, :, s_idx]
-        return np.rot90(v)
+        # Return raw for now; we rotate after resizing to avoid shape confusion
+        return v
 
-    view_lr = prep_view(data_lr, slice_idx)
-    view_sr = prep_view(data_sr, slice_idx)
-    view_gt = prep_view(data_gt, slice_idx)
+    # Initial extraction
+    raw_lr = prep_view(data_lr, slice_idx)
+    raw_sr = prep_view(data_sr, slice_idx)
+    raw_gt = prep_view(data_gt, slice_idx)
 
-    # 4. Calculate Absolute Difference (Heat Map)
-    # We compare SR and GT. Both must be on the same intensity scale.
+    # 3. Master Shape Alignment
+    # We want everything to match the Super-Res shape
+    target_h, target_w = raw_sr.shape
+
+    def align_to_sr(img, target_shape):
+        # If transposed (e.g., 208, 160 vs 160, 208), flip it
+        if img.shape[0] == target_shape[1] and img.shape[1] == target_shape[0]:
+            img = img.T
+
+        # Resize to match SR pixel grid
+        if img.shape != target_shape:
+            img = cv2.resize(img, (target_shape[1], target_shape[0]), interpolation=cv2.INTER_LINEAR)
+
+        # Now apply the rotation for anatomical viewing
+        return np.rot90(img)
+
+    view_sr = np.rot90(raw_sr)
+    view_lr = align_to_sr(raw_lr, raw_sr.shape)
+    view_gt = align_to_sr(raw_gt, raw_sr.shape)
+
+    # 4. Difference Map (Broadcasting will work now!)
     diff_map = np.abs(view_sr - view_gt)
 
-    # 5. Plotting: 4 Panes instead of 3
-    fig, axes = plt.subplots(1, 4, figsize=(24, 6))
+    # 5. Plotting (4 Panes)
+    fig, axes = plt.subplots(1, 4, figsize=(24, 7))
+    titles = ["Raw LR", "Raw SR", "Ground Truth", "Absolute Error"]
+    views = [view_lr, view_sr, view_gt, diff_map]
 
-    # Titles and Views
-    titles = ["Raw LR (Auto)", "Raw SR (Auto)", "Ground Truth", "Error Heat Map"]
-    images = [view_lr, view_sr, view_gt, diff_map]
+    for i in range(4):
+        # Independent scaling for first 3, Heatmap scaling for 4th
+        if i < 3:
+            v_min, v_max = np.percentile(views[i], [2, 98])
+            axes[i].imshow(views[i], cmap='gray', vmin=v_min, vmax=v_max)
+        else:
+            # Heatmap uses 'inferno' to show error density
+            axes[i].imshow(views[i], cmap='inferno', vmin=0, vmax=np.percentile(views[i], 99))
 
-    for i in range(3):
-        # Use robust independent scaling for anatomical views
-        v_min, v_max = np.percentile(images[i], [2, 98])
-        axes[i].imshow(images[i], cmap='gray', vmin=v_min, vmax=v_max)
         axes[i].set_title(titles[i])
         axes[i].axis('off')
 
-    # 6. Apply Heat Map (Inferno or Hot cmap works well)
-    # We use a robust max for the heat map to see subtle patterns
-    d_max = np.percentile(diff_map, 99)
-    im_heat = axes[3].imshow(diff_map, cmap='inferno', vmin=0, vmax=d_max)
-    axes[3].set_title(titles[3])
-    axes[3].axis('off')
-
-    # Add a colorbar to the heat map to understand the error magnitude
-    fig.colorbar(im_heat, ax=axes[3], fraction=0.046, pad=0.04)
-
     plt.tight_layout()
-    plt.savefig(output_image, dpi=300)
-    print(f"Heat map comparison saved to: {output_image}")
+    plt.savefig("debug_comparison_fixed.png")
     plt.show()
 
 
